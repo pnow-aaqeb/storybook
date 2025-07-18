@@ -5,8 +5,48 @@ import { getProjectRoot } from 'storybook/internal/common';
 import type { NextConfig } from 'next';
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants';
 import loadConfig from 'next/dist/server/config';
+import type { ImageLoaderProps } from 'next/image';
 import { DefinePlugin } from 'webpack';
 import type { Configuration as WebpackConfig } from 'webpack';
+
+export interface CustomImageLoaderConfig {
+  loader: 'custom';
+  loaderFile: string;
+}
+
+export const getCustomLoaderConfig = (nextConfig: NextConfig): CustomImageLoaderConfig | null => {
+  if (nextConfig.images?.loader === 'custom' && nextConfig.images.loaderFile) {
+    return {
+      loader: 'custom',
+      loaderFile: nextConfig.images.loaderFile,
+    };
+  }
+  return null;
+};
+
+export const loadCustomImageLoader = (
+  loaderFile: string,
+  configDir: string
+): ((props: ImageLoaderProps) => string) | null => {
+  try {
+    const loaderPath = require.resolve(loaderFile, { paths: [configDir] });
+
+    delete require.cache[loaderPath];
+
+    const loaderModule = require(loaderPath);
+    const loaderFunction = loaderModule.default || loaderModule;
+
+    if (typeof loaderFunction !== 'function') {
+      console.warn(`[Storybook] Custom image loader at ${loaderPath} is not a function`);
+      return null;
+    }
+
+    return loaderFunction;
+  } catch (error) {
+    console.error('[Storybook] Failed to load custom image loader:', error);
+    return null;
+  }
+};
 
 export const configureRuntimeNextjsVersionResolution = (baseConfig: WebpackConfig): void => {
   baseConfig.plugins?.push(
@@ -23,7 +63,24 @@ export const resolveNextConfig = async ({
 }: {
   nextConfigPath?: string;
 }): Promise<NextConfig> => {
-  const dir = nextConfigPath ? dirname(nextConfigPath) : getProjectRoot();
+  let dir: string;
+
+  if (nextConfigPath) {
+    // Resolve the full absolute path to the config file first
+    const absoluteConfigPath = require('path').resolve(nextConfigPath);
+    dir = dirname(absoluteConfigPath);
+
+    console.log('🔧 resolveNextConfig - nextConfigPath:', nextConfigPath);
+    console.log('🔧 resolveNextConfig - absoluteConfigPath:', absoluteConfigPath);
+    console.log('🔧 resolveNextConfig - dir:', dir);
+    console.log(
+      '🔧 resolveNextConfig - config exists:',
+      require('fs').existsSync(absoluteConfigPath)
+    );
+  } else {
+    dir = getProjectRoot();
+  }
+
   return loadConfig(PHASE_DEVELOPMENT_SERVER, dir, undefined);
 };
 

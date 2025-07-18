@@ -21,6 +21,8 @@ export const addons: PresetProperty<'addons'> = [
 
 export const core: PresetProperty<'core'> = async (config, options) => {
   const framework = await options.presets.apply<StorybookConfig['framework']>('framework');
+  const nextConfigPath =
+    typeof framework === 'string' ? undefined : framework.options.nextConfigPath;
 
   // Load the Next.js configuration before we need it in webpackFinal (below).
   // This gives Next.js an opportunity to override some of webpack's internals
@@ -133,7 +135,9 @@ export const babel: PresetProperty<'babel'> = async (baseConfig: TransformOption
 };
 
 export const webpackFinal: StorybookConfig['webpackFinal'] = async (baseConfig, options) => {
-  const { nextConfigPath } = await options.presets.apply<FrameworkOptions>('frameworkOptions');
+  const framework = await options.presets.apply<StorybookConfig['framework']>('framework');
+  const nextConfigPath =
+    typeof framework === 'string' ? undefined : framework.options.nextConfigPath;
   const nextConfig = await configureConfig({
     baseConfig,
     nextConfigPath,
@@ -169,7 +173,7 @@ export const webpackFinal: StorybookConfig['webpackFinal'] = async (baseConfig, 
   configureRuntimeNextjsVersionResolution(baseConfig);
   configureImports({ baseConfig, configDir: options.configDir });
   configureCss(baseConfig, nextConfig);
-  configureImages(baseConfig, nextConfig);
+  await configureImages(baseConfig, nextConfig, nextConfigPath as string);
   configureStyledJsx(baseConfig);
   configureNodePolyfills(baseConfig);
   configureAliases(baseConfig);

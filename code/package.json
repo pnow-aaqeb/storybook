@@ -26,7 +26,7 @@
   "scripts": {
     "affected:test": "nx show projects --affected -t test | xargs -I # echo --project # | xargs yarn test:watch",
     "await-serve-storybooks": "wait-on http://localhost:8001",
-    "build": "NODE_ENV=production yarn --cwd ../scripts build-package",
+    "build": "NODE_ENV=development yarn --cwd ../scripts build-package",
     "changelog": "pr-log --sloppy --cherry-pick",
     "changelog:next": "pr-log --sloppy --since-prerelease",
     "check": "NODE_ENV=production yarn --cwd ../scripts check-package",
